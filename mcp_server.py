@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 from data_loader import load_store_data
 from strategy_rules import get_strategies
@@ -16,14 +17,14 @@ def analyze_store(store_name):
         (df["mct_nm"] != store_name)
     ]
 
-    # 주요 지표 비교
+    # 주요 지표
     metrics = {
         "배달비율": (store["dlv_saa_rat"], competitors["dlv_saa_rat"].mean()),
         "재방문율": (store["mct_ue_cln_reu_rat"], competitors["mct_ue_cln_reu_rat"].mean()),
         "신규고객비율": (store["mct_ue_cln_new_rat"], competitors["mct_ue_cln_new_rat"].mean()),
     }
 
-    # Percentile 계산 (SV = -999999.9 제외)
+    # Percentile
     percentiles = {}
     for label, col in {
         "배달비율": "dlv_saa_rat",
@@ -81,30 +82,50 @@ def analyze_store(store_name):
     # 전략 도출
     strategies = get_strategies(store, percentiles)
 
-    # Gemini 프롬프트
+    # ✅ 단일 프롬프트 구성
+    strategy_bullets = "\n".join([f"{i+1}. {s}" for i, s in enumerate(strategies)])
     prompt = f"""
-    매장명: {store_name}
-    업종: {store['hpsn_mct_zcd_nm']}
-    상권: {store['hpsn_mct_bzn_cd_nm']}
-    기준년월: {store['ta_ym']}
+당신은 전문 마케팅 컨설턴트입니다.
+다음 매장 분석 결과와 전략들을 참고하여, 각 전략에 대한 마케팅 실행 아이디어를 간결하게 작성해주세요.
 
-    📊 주요 지표:
-    - 배달비율: {store['dlv_saa_rat']:.2f}% (경쟁 평균: {metrics['배달비율'][1]:.2f}%)
-    - 재방문율: {store['mct_ue_cln_reu_rat']:.2f}% (경쟁 평균: {metrics['재방문율'][1]:.2f}%)
-    - 신규고객비율: {store['mct_ue_cln_new_rat']:.2f}% (경쟁 평균: {metrics['신규고객비율'][1]:.2f}%)
+🏪 매장명: {store_name}
+업종: {store['hpsn_mct_zcd_nm']}
+상권: {store['hpsn_mct_bzn_cd_nm']}
+기준년월: {store['ta_ym']}
 
-    주고객층: {store['주고객층']}
-    유입 필요 고객층: {store['유입필요고객']}
-    상권 유형: {store['상권유형']}
+📊 주요 지표
+- 배달비율: {store['dlv_saa_rat']:.2f}% (경쟁 평균: {metrics['배달비율'][1]:.2f}%)
+- 재방문율: {store['mct_ue_cln_reu_rat']:.2f}% (경쟁 평균: {metrics['재방문율'][1]:.2f}%)
+- 신규고객비율: {store['mct_ue_cln_new_rat']:.2f}% (경쟁 평균: {metrics['신규고객비율'][1]:.2f}%)
 
-    위 정보에 기반해 마케팅 전략을 추천해주세요.
-    """
-    caption = generate_gemini_caption(prompt)
+🎯 주고객층: {store['주고객층']}
+🎯 유입 필요 고객층: {store['유입필요고객']}
+🏙️ 상권 유형: {store['상권유형']}
+
+📋 전략 목록:
+{strategy_bullets}
+
+각 전략에 대해:
+- 제목
+- 타깃 고객
+- 주요 채널
+- 구체적 실행 방법
+
+을 간결하고 이모지와 함께 작성해주세요.
+"""
+
+    # Gemini API 1회 호출
+    full_response = generate_gemini_caption(prompt)
+
+    # ✅ 문단 분리
+    parts = re.split(r"\n?전략\s*\d+[:：]", full_response)
+    parts = [p.strip() for p in parts if p.strip()]
+    gemini_strategies = parts[:3]  # 최대 3개만
 
     return {
         "store": store.to_dict(),
         "metrics": metrics,
         "percentiles": percentiles,
         "strategies": strategies,
-        "caption": caption
+        "gemini_strategies": gemini_strategies
     }
