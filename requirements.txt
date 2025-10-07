@@ -1,7 +1,8 @@
 streamlit
 pandas
+plotly
+markdown
+python-dotenv
 reportlab
 langchain
 langchain-google-genai
-python-dotenv
-plotly
