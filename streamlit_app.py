@@ -4,24 +4,56 @@ from data_loader import load_store_data
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="AI 마케팅 전략 코치", layout="wide")
-st.title("🤖 내 가게를 살리는 AI 비밀상담사")
 
+# 세션 상태 초기화
+if "store_name" not in st.session_state:
+    st.session_state.store_name = None
+if "clicked_strategy" not in st.session_state:
+    st.session_state.clicked_strategy = [False, False, False]
+
+# 상단 제목 및 설명
+st.title("🤖 내 가게를 살리는 AI 비밀상담사")
 st.markdown("""
 매장 데이터를 기반으로 경쟁 매장과의 상대적인 위치를 분석하고,  
 배달/재방문/신규 유입 전략을 자동 추천해드립니다.
 """)
 
+# 사용자 메시지 출력
+def user_message(content):
+    with st.chat_message("user"):
+        st.markdown(f"<div style='padding:0.5rem 1rem; background-color:#e8f0fe; border-radius:1rem;'>{content}</div>", unsafe_allow_html=True)
+
+# 챗봇 메시지 출력
+def bot_message(content):
+    with st.chat_message("assistant"):
+        st.markdown(content, unsafe_allow_html=True)
+
 # 입력창
-store_name = st.text_input("📌 매장명 입력", placeholder="예: 커피빈 역삼점")
+user_input = st.chat_input("매장명을 입력해주세요")
 
-if store_name:
-    with st.spinner("분석 중입니다..."):
-        try:
-            result = analyze_store(store_name)
-            st.success(f"✅ '{store_name}' 마케팅 전략 분석 결과")
+# 초기 예시 출력
+if not st.session_state.store_name:
+    _, df = load_store_data("")
+    bot_message("안녕하세요! 💡 매장명을 입력하시면 마케팅 전략을 분석해드릴게요.")
+    st.markdown("🔍 예시 매장명 (상위 5개)")
+    st.write(df["mct_nm"].dropna().unique().tolist()[:5])
 
-            # 1️⃣ 📊 퍼센타일 Plotly 그래프
-            st.subheader("📊 경쟁 매장 대비 퍼센타일")
+# 입력 분석
+if user_input:
+    user_message(user_input)
+    st.session_state.store_name = user_input
+
+    try:
+        with st.spinner("🔍 전략 분석 중..."):
+            result = analyze_store(user_input)
+
+        store = result["store"]
+        strategies = result["strategies"]
+        gemini_strategies = result["gemini_strategies"]
+
+        # 📊 퍼센타일 그래프
+        with st.chat_message("assistant"):
+            st.markdown("📊 <strong>경쟁 매장 대비 퍼센타일</strong>", unsafe_allow_html=True)
             percentile = result["percentiles"]
             labels = list(percentile.keys())
             values = [percentile[k] if percentile[k] is not None else 0 for k in labels]
@@ -41,34 +73,39 @@ if store_name:
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # 2️⃣ 🧠 전략 카드 형식 출력
-            st.subheader("🧠 맞춤형 마케팅 전략 카드")
+        # 🧠 전략 카드 출력
+        with st.chat_message("assistant"):
+            st.markdown("🧠 <strong>AI 추천 마케팅 전략 카드</strong>", unsafe_allow_html=True)
+            for i, strat in enumerate(strategies):
+                st.markdown(
+                    f"""
+                    <div style="background-color:#fffbe6; padding:1rem; border-radius:1rem; margin-bottom:0.5rem;">
+                        <strong>전략 {i+1}:</strong> {strat}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-            if result["strategies"]:
-                cols = st.columns(2)
-                for i, strat in enumerate(result["strategies"]):
-                    with cols[i % 2]:
-                        st.markdown(
-                            f"""
-                            <div style="background-color:#f0f2f6; padding: 1rem; border-radius: 1rem; margin-bottom: 1rem; box-shadow: 2px 2px 6px rgba(0,0,0,0.05);">
-                                <h4 style="color:#1c64f2;">💡 전략 {i+1}</h4>
-                                <p style="margin-top: 0.5rem;">{strat}</p>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-            else:
-                st.info("전략 조건에 해당하는 항목이 없습니다.")
+        # 💬 Gemini 전략 문구 + 동적 버튼 처리
+        for i, g_caption in enumerate(gemini_strategies):
+            with st.chat_message("assistant"):
+                st.markdown(f"📌 <strong>전략 {i+1} 상세 설명</strong>", unsafe_allow_html=True)
+                st.markdown(
+                    f"""
+                    <div style="background-color:#f0f4ff; padding: 1rem; border-left: 5px solid #1c64f2; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                        {g_caption}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-            # 3️⃣ 💬 Gemini 생성 마케팅 문구
-            st.subheader("💬 Gemini 생성 마케팅 문구")
-            st.write(result["caption"])
+                # 버튼은 항상 보이게 하고, 클릭하면 상태 저장만
+                if st.button(f"🎯 이 전략을 실행에 옮긴다면?", key=f"btn_{i}"):
+                    st.session_state.clicked_strategy[i] = True
 
-        except Exception as e:
-            st.error(f"❌ 분석 중 오류가 발생했습니다: {str(e)}")
+            # 💬 버튼이 눌렸으면 별도 말풍선으로 실행 코멘트 출력
+            if st.session_state.clicked_strategy[i]:
+                bot_message(f"✅ 전략 {i+1} 실행 팁:\n\n👉 {strategies[i]}")
 
-else:
-    # 매장명 예시 표시
-    _, df = load_store_data("")
-    st.markdown("🔍 예시 매장명 (상위 5개)")
-    st.write(df["mct_nm"].dropna().unique().tolist()[:5])
+    except Exception as e:
+        bot_message(f"❌ 오류 발생: {str(e)}")
