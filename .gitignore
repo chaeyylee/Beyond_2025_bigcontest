@@ -11,3 +11,6 @@ __pycache__/
 
 # OS 파일
 .DS_Store
+
+# excel 임시 파일
+~$*
