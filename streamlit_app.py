@@ -19,11 +19,9 @@ llm = ChatGoogleGenerativeAI(
     temperature=0.5,
 )
 
-
 def clear_chat_history():
     st.session_state.chat_history = []
     st.rerun()
-
 
 # 첫화면 멘트
 INITIAL_INTRO = """
@@ -48,8 +46,7 @@ if st.session_state.sidebar_open:
     with st.sidebar:
         st.image("shc_ci_basic_00.png", use_container_width=True)
 
-        st.markdown("<p style='text-align: center; font-size: 18px; font-weight: bold;'>🕵️ 탐정 D 마케팅 수사본부</p>",
-                    unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 18px; font-weight: bold;'>🕵️ 탐정 D 마케팅 수사본부</p>", unsafe_allow_html=True)
         st.markdown("""
         <p style='text-align: center; font-size: 16px;'>
           데이터와 추리가 만나는 곳<br><strong>Data × Detective</strong>
@@ -96,7 +93,6 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
     st.session_state.chat_history.append({"role": "assistant", "content": INITIAL_INTRO})
 
-
 # ✅ 채팅 메시지 출력
 def render_chat():
     case_index = 1  # 사건 번호를 추적할 인덱스
@@ -128,7 +124,6 @@ def render_chat():
 # ✅ 반드시 초기화 후에 호출
 render_chat()
 
-
 # 프롬프트 생성 함수
 def build_prompt(messages, store_row):
     base = """
@@ -152,7 +147,7 @@ def build_prompt(messages, store_row):
     - 사용자의 문제 상황을 핵심 키워드로 요약한 **사건 제목**을 한 줄로 작성해 주세요.
     - 가게명을 포함하여 분석을 위한 관찰 제목처럼 작성해 주세요.  
         - 예: ㅇㅇ매장 단골 손님 감소 추정 건, ㅁㅁ매장 신규 유입률 저하 의심 등
-
+        
     ---
 
     ### 📋 사건 개요
@@ -173,10 +168,10 @@ def build_prompt(messages, store_row):
     - 사용자의 발화와 가맹점 데이터를 바탕으로 탐지된 주요 지표/수치/패턴을 정리해 주세요.
 
     ---
-
+    
     ### 📊 단서 시각화
     [[VISUALIZATION_PLACEHOLDER]]
-
+    
     ---
 
     ### 🧭 원인 추론
