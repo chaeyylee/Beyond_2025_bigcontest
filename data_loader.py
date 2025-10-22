@@ -1,7 +1,7 @@
 import pandas as pd
 
 def load_store_data(store_name: str = ""):
-    df = pd.read_csv("data/real_final_set_f.csv", encoding="cp949")
+    df = pd.read_csv("data/new_final_set_f_yearly1022.csv", encoding="cp949")
     df.columns = df.columns.str.lower()
     st_col = "mct_nm"
 
