@@ -44,7 +44,7 @@ if "sidebar_open" not in st.session_state:
 # 사이드바 구성
 if st.session_state.sidebar_open:
     with st.sidebar:
-        st.image("shc_ci_basic_00.png", use_container_width=True)
+        st.image("assets/shc_ci_basic_00.png", use_container_width=True)
 
         st.markdown("<p style='text-align: center; font-size: 18px; font-weight: bold;'>🕵️ 탐정 D 마케팅 수사본부</p>", unsafe_allow_html=True)
         st.markdown("""
